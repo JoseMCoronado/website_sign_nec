@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+  <data>
+    <record model="ir.actions.server" id="action_create_esign_document">
+      <field name="name">[JDC] Create Automated eSign Document</field>
+      <field name="model_id" ref="sale.model_sale_order"/>
+      <field name="sequence">5</field>
+      <field name="state">code</field>
+      <field name="code"><![CDATA[
+if obj.x_contract_sent != True or not obj.x_contract_id:
+  ##Defining Signature Request Variables
+  salesperson = obj.env['signature.item.party'].sudo().search([('name','ilike','Employee')],limit=1)
+  customer = obj.env['signature.item.party'].sudo().search([('name','ilike','Customer')],limit=1)
+  name = obj.env.ref('website_sign.signature_item_type_name')
+  company = obj.env.ref('website_sign.signature_item_type_company')
+  email = obj.env.ref('website_sign.signature_item_type_email')
+  date = obj.env.ref('website_sign.signature_item_type_date')
+  phone = obj.env.ref('website_sign.signature_item_type_phone')
+  initial = obj.env.ref('website_sign.signature_item_type_initial')
+  text = obj.env.ref('website_sign.signature_item_type_text')
+  multi_text = obj.env.ref('website_sign.signature_item_type_multiline_text')
+  signature = obj.env['signature.item.type'].sudo().search([('type','=','signature')],limit=1)
+
+  ##Creating Signature Request Template
+  signature_req_name = obj.name + " " + datetime.datetime.now().strftime('%m/%d/%Y')
+  qweb = obj.env['report'].get_pdf(obj,'website_sign_nec.report_sale_contract')
+  attachment = obj.env['ir.attachment'].sudo().create({
+    'name': signature_req_name,
+    'type': 'binary',
+    'datas': qweb.encode('base64'),
+    'datas_fname': signature_req_name,
+  })
+  signature_req = obj.env['signature.request.template'].sudo().create({
+    'attachment_id': attachment.id,
+  })
+
+  ##Creating Signature Request Boxes
+  boxes = [
+    {'required':True,'type_id':date.id, 'responsible_id': customer.id,'page': 3, 'posX':0.67,'posY':0.74,'width':0.27,'height':0.03},
+    {'required':True,'type_id':company.id, 'responsible_id': customer.id,'page': 3, 'posX':0.67,'posY':0.78,'width':0.27,'height':0.03},
+    {'required':True,'type_id':name.id, 'responsible_id': customer.id,'page': 3, 'posX':0.67,'posY':0.82,'width':0.27,'height':0.03},
+    {'required':True,'type_id':signature.id, 'responsible_id': customer.id,'page': 3, 'posX':0.67,'posY':0.86,'width':0.27,'height':0.05},
+    {'required':True,'type_id':date.id, 'responsible_id': salesperson.id,'page': 3, 'posX':0.05,'posY':0.78,'width':0.27,'height':0.03},
+    {'required':True,'type_id':name.id, 'responsible_id': salesperson.id,'page': 3, 'posX':0.05,'posY':0.82,'width':0.27,'height':0.03},
+    {'required':True,'type_id':signature.id, 'responsible_id': salesperson.id,'page': 3, 'posX':0.05,'posY':0.86,'width':0.27,'height':0.05},
+  ]
+
+  ##Adding Boxes to the Signature Request
+  signature_req['signature_item_ids'] = [(0,0,b) for b in boxes]
+
+  ##Creating the eSign Document
+  esign = obj.env['signature.request'].sudo().create({
+    'template_id': signature_req.id,
+    'reference': signature_req_name,
+  })
+
+  ##Assign Responsible Users
+  responsible = [
+    {'signature_request_id': esign.id,'role_id':salesperson.id, 'partner_id':obj.user_id.partner_id.id},
+    {'signature_request_id': esign.id,'role_id':customer.id, 'partner_id':obj.partner_id.id},
+  ]
+
+  for r in responsible:
+    obj.env['signature.request.item'].sudo().create(r)
+
+  ##Apply eSign ID to Signature Request Template
+  signature_req.write({
+    'signature_request_ids': [(4,esign.id)]
+  })
+
+  ##Send eSign Document
+  esign.action_sent()
+  obj['x_contract_sent'] = True
+  obj['x_contract_id'] = esign.id
+else:
+  raise Warning('Contract has already been sent.')
+
+      ]]>
+      </field>
+    </record>
+    <record model="ir.actions.server" id="action_view_esign_document">
+      <field name="name">[JDC] View eSign Document</field>
+      <field name="model_id" ref="sale.model_sale_order"/>
+      <field name="sequence">5</field>
+      <field name="state">code</field>
+      <field name="code"><![CDATA[
+if obj.x_contract_id:
+  action = obj.x_contract_id.go_to_sign_document()
+else:
+  raise Warning('Order does not have an associated contract.')
+      ]]>
+      </field>
+    </record>
+  </data>
+</openerp>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+  <data>
+    <record model="ir.model.fields" id="field_sale_order_contract_sent">
+      <field name="name">x_contract_sent</field>
+      <field name="model_id" ref="sale.model_sale_order"/>
+      <field name="field_description">Contract Sent</field>
+      <field name="ttype">boolean</field>
+    </record>
+    <record model="ir.model.fields" id="field_sale_order_contract">
+      <field name="name">x_contract_id</field>
+      <field name="model_id" ref="sale.model_sale_order"/>
+      <field name="field_description">Contract Sent</field>
+      <field name="ttype">many2one</field>
+      <field name="relation">signature.request</field>
+    </record>
+  </data>
+</openerp>
