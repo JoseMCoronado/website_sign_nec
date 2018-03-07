@@ -22,7 +22,7 @@ if obj.x_contract_sent != True or not obj.x_contract_id:
   signature = obj.env['signature.item.type'].sudo().search([('type','=','signature')],limit=1)
 
   ##Creating Signature Request Template
-  signature_req_name = obj.name + " " + datetime.datetime.now().strftime('%m/%d/%Y')
+  signature_req_name = "Union Machinery Sales Agreement - " + obj.name
   qweb = obj.env['report'].get_pdf(obj,'website_sign_nec.report_sale_contract')
   attachment = obj.env['ir.attachment'].sudo().create({
     'name': signature_req_name,
